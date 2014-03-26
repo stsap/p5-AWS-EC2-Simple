@@ -24,6 +24,7 @@ sub new {
         "Service" => "",
         # 0 / 1
         "IsSSL" => "",
+        # http://docs.aws.amazon.com/AWSEC2/latest/APIReference/query-apis.html
         "Action" => "",
         # PERL | JSON | RAW(xml)
         "ReturnType" => "",
@@ -35,23 +36,36 @@ sub new {
     return $self;
 }
 
+## @cmethod setReturnType
+# Specifies the format of the value that is returned by the execution of the "post" method
+# @param type [$] XML or RAW|JSON|PERL
 sub setReturnType {
     my $self = shift;
     die("unknown return type: ".$_[0]) if ($_[0] !~ /^(?:xml|json|raw|perl)$/msxi);
     $self->{"ReturnType"} = $_[0];
 }
 
+## @cmethod setAction
+# set the EC2 API Action
+# @param action [$] action name
+# @see http://docs.aws.amazon.com/AWSEC2/latest/APIReference/query-apis.html
 sub setAction {
     my $self = shift;
     $self->{"Action"} = shift;
 }
 
+## @cmethod setRegion
+# set the target AWS region
+# @param region [$] definited AWS Region name
 sub setRegion {
     my $self = shift;
     die("unknown region: ".$_[0]) if (not grep({ $_ eq $_[0]} (REGIONS)));
     $self->{"Region"} => $_[0];
 }
 
+## @cmethod post
+# call the specified AWS API
+# @return [$] 
 sub post {
     my $self = shift;
     $self->{"Timestamp"} = $self->_timestamp();
@@ -73,10 +87,18 @@ sub post {
     }
 }
 
+## @fn _timestamp
+# Generate time string that represents the current
+# @return [$] time string
 sub _timestamp {
     return strftime("%Y-%m-%dT%H:%M:%SZ", gmtime);
 }
 
+## @fn _createURI
+# generates a request URL to AWS
+# @param param [$] parameters hashref
+# - withScheme [$] 0 => return only hostname | 1 => return URI with http:// or https:// scheme
+# @return [$] aws api uri
 sub _createURI {
     my $self = shift;
     my $param = shift;
@@ -84,6 +106,16 @@ sub _createURI {
     return ($param->{"withScheme"}) ? $uri->as_string: $uri->host;
 }
 
+## @fn _createSignedParam
+# Generate AWS signature
+# @param params [%] request parameters hash
+# - AccessKey
+# - Action
+# - SignatureMethod
+# - SignatureVersion
+# - Timestamp
+# - Version
+# @return [$] hashed signature string
 sub _createSignedParam {
     my $self = shift;
     my %params = @_;
@@ -92,6 +124,9 @@ sub _createSignedParam {
     return encode_base64(hmac_sha256($signing, $self->{"SecretAccessKey"}), "");
 }
 
+## @fn _rehashRequestParams
+# rehash values for the HTTP request
+# @return [%] rehashed parameters
 sub _rehashRequestParams {
     my $self = shift;
     my %params;
@@ -102,12 +137,16 @@ sub _rehashRequestParams {
     return %params;
 }
 
+## @fn _checkValidInitialParameters
+# check AccessKey and SecretAccessKey includes in the initial parameter
 sub _checkValidInitialParameters {
     my $self = shift;
     die("AccessKey is required.") if (not $self->{"AccessKey"});
     die("SecretAccessKey is required.") if (not $self->{"SecretAccessKey"});
 }
 
+## @fn _setProperties
+# sets class properties
 sub _setProperties {
     my $self = shift;
     $self->{"baseUrl"} = "amazonaws.com";
